@@ -1,0 +1,242 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Configurações de encoding UTF-8
+  directUrl = env("DATABASE_URL")
+}
+
+// ===========================================
+// MODELS EXISTENTES DO CRM (METTA STUDIO)
+// ===========================================
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  alunos    Aluno[]
+  pagamentos Pagamento[]
+  zapFlowSessions ZapFlowSession[]
+
+  @@map("User")
+}
+
+model Aluno {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String?
+  telefone  String?
+  userId    Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  user      User?     @relation(fields: [userId], references: [id])
+  turmas    Turma[]
+  pagamentos Pagamento[]
+  zapFlowSessions ZapFlowSession[]
+
+  @@map("Aluno")
+}
+
+model Turma {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+  alunoId   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  aluno     Aluno?   @relation(fields: [alunoId], references: [id])
+  configuracaoTurma ConfiguracaoTurma[]
+
+  @@map("Turma")
+}
+
+model Pagamento {
+  id        Int      @id @default(autoincrement())
+  valor     Decimal  @db.Decimal(10, 2)
+  status    String   // "pending", "paid", "cancelled"
+  userId    Int?
+  alunoId   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  user      User?    @relation(fields: [userId], references: [id])
+  aluno     Aluno?   @relation(fields: [alunoId], references: [id])
+  cobrancas Cobranca[]
+
+  @@map("Pagamento")
+}
+
+model Cobranca {
+  id          Int      @id @default(autoincrement())
+  valor       Decimal  @db.Decimal(10, 2)
+  status      String   // "pending", "paid", "cancelled"
+  pagamentoId Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  pagamento   Pagamento? @relation(fields: [pagamentoId], references: [id])
+  cobrancaAvulsa CobrancaAvulsa[]
+  cobrancaEfi    CobrancaEfi[]
+
+  @@map("Cobranca")
+}
+
+model CobrancaAvulsa {
+  id        Int      @id @default(autoincrement())
+  descricao String?
+  cobrancaId Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  cobranca  Cobranca? @relation(fields: [cobrancaId], references: [id])
+
+  @@map("CobrancaAvulsa")
+}
+
+model CobrancaEfi {
+  id        Int      @id @default(autoincrement())
+  transacaoId String?
+  cobrancaId Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  cobranca  Cobranca? @relation(fields: [cobrancaId], references: [id])
+
+  @@map("CobrancaEfi")
+}
+
+model ConfiguracaoTurma {
+  id        Int      @id @default(autoincrement())
+  configuracao Json?  // Configurações específicas da turma
+  turmaId   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  turma     Turma?   @relation(fields: [turmaId], references: [id])
+
+  @@map("ConfiguracaoTurma")
+}
+
+model ItemCustomizado {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+  valor     Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ItemCustomizado")
+}
+
+model LogAuditoria {
+  id        Int      @id @default(autoincrement())
+  acao      String
+  tabela    String?
+  registroId Int?
+  dados     Json?
+  createdAt DateTime @default(now())
+
+  @@map("LogAuditoria")
+}
+
+model WhatsAppMessage {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  message   String
+  direction String   // "incoming" ou "outgoing"
+  createdAt DateTime @default(now())
+
+  @@map("WhatsAppMessage")
+}
+
+model WhatsAppSession {
+  id           Int      @id @default(autoincrement())
+  phone        String   @unique
+  status       String   @default("active")
+  lastActivity DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("WhatsAppSession")
+}
+
+model WhatsAppTemplate {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  conteudo  String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("WhatsAppTemplate")
+}
+
+// ===========================================
+// MODELS ESPECÍFICOS DO Z-API
+// ===========================================
+
+model ZapFlowSession {
+  id           Int      @id @default(autoincrement())
+  phone        String   @unique
+  lastMessage  String?  @map("last_message")
+  currentStep  String   @default("welcome") @map("current_step")
+  context      Json?    // Para armazenar dados contextuais da conversa
+  userId       Int?     @map("user_id") // Referência ao User do CRM
+  alunoId      Int?     @map("aluno_id") // Referência ao Aluno do CRM
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user         User?    @relation(fields: [userId], references: [id])
+  aluno        Aluno?   @relation(fields: [alunoId], references: [id])
+  messageLogs  ZapFlowMessageLog[]
+
+  @@map("zapflow_sessions")
+}
+
+model ZapFlowMessageLog {
+  id          Int      @id @default(autoincrement())
+  phone       String
+  message     String
+  direction   String   // "incoming" ou "outgoing"
+  messageType String   @map("message_type") // "text", "button", "list", etc.
+  metadata    Json?    // Dados adicionais da mensagem
+  sessionId   Int?     @map("session_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relacionamentos
+  session     ZapFlowSession? @relation(fields: [sessionId], references: [id])
+
+  @@map("zapflow_message_logs")
+}
+
+model ZapFlowIntegration {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  config      Json?    // Configurações específicas da integração
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("zapflow_integrations")
+}

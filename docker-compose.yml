@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Aplicação ZapFlow Integration
+  zapflow-integration:
+    build: .
+    ports:
+      - "3333:3333"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3333}
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - metta_studio_metta_network
+      - default
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  metta_studio_metta_network:
+    external: true
