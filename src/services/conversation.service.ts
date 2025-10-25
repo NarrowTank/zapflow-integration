@@ -59,7 +59,7 @@ export class ConversationService {
       });
 
       // Determinar o conteúdo da mensagem
-      let messageContent = message || '';
+      let messageContent: string = '';
       let messageType = type || 'text';
 
       // Se for uma resposta de lista de opções, usar o selectedRowId como mensagem
@@ -94,6 +94,21 @@ export class ConversationService {
           phone,
           message: text.message,
         });
+      }
+      // Se message for um objeto com conversation, extrair
+      else if (message && typeof message === 'object' && (message as any).conversation) {
+        messageContent = (message as any).conversation;
+        messageType = 'text';
+        
+        logger.info('Mensagem extraída do objeto conversation', {
+          phone,
+          message: messageContent,
+        });
+      }
+      // Se message for uma string diretamente
+      else if (message && typeof message === 'string') {
+        messageContent = message;
+        messageType = 'text';
       }
 
       // Log da mensagem recebida
