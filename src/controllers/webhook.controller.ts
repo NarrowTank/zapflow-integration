@@ -91,8 +91,8 @@ export class WebhookController {
         }
       }
 
-      // Processar somente mensagens de usuário (texto/lista/botões). Ignorar ReceivedCallback para evitar loops
-      if ((payload.type === 'text' && (payload.message || payload.text)) || payload.listResponseMessage || payload.buttonResponseMessage) {
+      // Processar somente mensagens de usuário (texto/lista/botões/ReceivedCallback)
+      if ((payload.type === 'text' && (payload.message || payload.text)) || payload.type === 'ReceivedCallback' || payload.listResponseMessage || payload.buttonResponseMessage) {
         // Lock de processamento por telefone (3s) para evitar concorrência/race conditions
         const lockKey = `zapi:lock:${payload.phone}`;
         let locked = false;
