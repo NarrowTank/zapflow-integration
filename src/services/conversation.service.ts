@@ -942,10 +942,13 @@ export class ConversationService {
     const endereco = clienteData.endereco || '';
     const [rua, numero] = endereco.split(',').map((part: string) => part.trim());
     
+    // Normalizar telefone (remover código do país 55 se presente)
+    const telefoneNormalizado = this.normalizeTelefone(session.phone);
+    
     // Criar o cliente no banco de dados
     const novoCliente = await this.mettaApiService.createAluno({
       cpf: clienteData.cpf,
-      telefone: session.phone,
+      telefone: telefoneNormalizado,
       cep: clienteData.cep,
       rua: rua || '',
       numero: numero || '',
@@ -975,6 +978,28 @@ export class ConversationService {
     });
     
     return await this.getContractConfirmedStep(session.phone);
+  }
+
+  /**
+   * Remove código do país (55) do telefone se presente
+   * Entrada: 5516981368054 -> Saída: 16981368054
+   */
+  private normalizeTelefone(phone: string): string {
+    // Remove tudo que não é número
+    const numbersOnly = phone.replace(/\D/g, '');
+    
+    // Se começa com 55 e tem 13 dígitos (55 + DDD + 9 dígitos), remover o 55
+    if (numbersOnly.startsWith('55') && numbersOnly.length === 13) {
+      return numbersOnly.substring(2);
+    }
+    
+    // Se começa com 55 e tem 12 dígitos (55 + DDD + 8 dígitos), remover o 55
+    if (numbersOnly.startsWith('55') && numbersOnly.length === 12) {
+      return numbersOnly.substring(2);
+    }
+    
+    // Caso contrário, retornar como está
+    return numbersOnly;
   }
 
   /**
