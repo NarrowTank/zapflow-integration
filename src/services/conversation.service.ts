@@ -1464,7 +1464,7 @@ export class ConversationService {
     }
 
     // Mostrar resumo do pacote
-    const session = await this.getOrCreateSession('');
+    const session = await this.getOrCreateSession(phone);
     const pacoteData = session.data?.pacoteData;
     const clienteData = session.data?.clienteData;
     

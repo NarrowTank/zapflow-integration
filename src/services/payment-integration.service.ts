@@ -268,11 +268,11 @@ export class PaymentIntegrationService {
     }
 
     try {
-      const username = process.env.PAYMENT_SYSTEM_USERNAME || 'admin';
-      const password = process.env.PAYMENT_SYSTEM_PASSWORD;
+      const username = process.env.METTA_USERNAME || 'admin';
+      const password = process.env.METTA_PASSWORD;
 
       if (!password) {
-        throw new Error('PAYMENT_SYSTEM_PASSWORD não configurada');
+        throw new Error('METTA_PASSWORD não configurada');
       }
 
       const response = await axios.post(`${this.baseUrl}/api/auth/login`, {
