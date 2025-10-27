@@ -1974,11 +1974,11 @@ export class ConversationService {
       }
 
       // Pegar dados da primeira parcela (resposta vem em data.data)
-      const parcelas = carneResponse.data.data || carneResponse.data.parcelas || [];
-      if (parcelas.length === 0) {
+      const parcelasArray = carneResponse.data.data || carneResponse.data.parcelas || [];
+      if (parcelasArray.length === 0) {
         throw new Error('Nenhuma parcela foi gerada');
       }
-      const primeiraParcela = parcelas[0];
+      const primeiraParcela = parcelasArray[0];
 
       // Montar mensagem com os dados reais
       const mensagem = `💳 **PAGAMENTO PARCELADO (Carnê ${parcelas}x)**\n\n` +
