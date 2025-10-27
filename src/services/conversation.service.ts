@@ -126,29 +126,6 @@ export class ConversationService {
       // Buscar ou criar sessão
       const session = await this.getOrCreateSession(phone);
 
-      // Verificar se a sessão está em estado final e precisa resetar
-      // Estados finais: quando o usuário já completou um fluxo e voltou ao menu
-      const stepsQuePrecisamReset = ['main_menu'];
-      
-      if (stepsQuePrecisamReset.includes(session.currentStep)) {
-        logger.info('Sessão em estado final, resetando para início', { 
-          phone, 
-          currentStep: session.currentStep 
-        });
-        
-        // Resetar sessão para welcome
-        await this.resetSessionToMainMenu(phone);
-        
-        // Enviar mensagem de boas-vindas
-        const welcomeResponse = this.getWelcomeStep();
-        await this.sendResponse(phone, welcomeResponse);
-        
-        // Cancelar timeout (novo fluxo começando)
-        this.cancelSessionTimeout(phone);
-        
-        return; // Não processar mais essa mensagem
-      }
-
       // Determinar resposta baseada no estado atual
       const response = await this.determineResponse(session, messageContent);
 
