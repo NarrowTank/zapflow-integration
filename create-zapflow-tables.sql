@@ -47,3 +47,4 @@ COMMENT ON TABLE zapflow_sessions IS 'Sessões de conversação do ZapFlow Integ
 COMMENT ON TABLE zapflow_message_logs IS 'Logs de mensagens do ZapFlow Integration';
 COMMENT ON TABLE zapflow_integrations IS 'Configurações de integrações do ZapFlow';
 
+

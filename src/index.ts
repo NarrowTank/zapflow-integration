@@ -23,6 +23,9 @@ class App {
   }
 
   private initializeMiddlewares(): void {
+    // Trust proxy (necessário quando atrás de Nginx)
+    this.app.set('trust proxy', true);
+
     // Segurança
     this.app.use(helmet({
       contentSecurityPolicy: false, // Desabilitado para APIs
