@@ -289,31 +289,24 @@ export class MettaApiService {
     try {
       await this.authenticate();
 
-      // Por enquanto, retornar array vazio pois não temos endpoint específico
-      // TODO: Implementar endpoint /api/turmas/{id}/itens-customizados no sistema principal
+      // Buscar configuração da turma primeiro
+      const turmas = await this.searchTurmas(turmaId);
+      if (!turmas || turmas.length === 0) {
+        logger.warn('Turma não encontrada para buscar itens', { turmaId });
+        return [];
+      }
+
+      const turma = turmas[0];
+      if (!turma.configuracao) {
+        logger.warn('Configuração da turma não encontrada', { turmaId });
+        return [];
+      }
+
+      // Buscar itens customizados via endpoint (se existir no futuro)
+      // Por enquanto, retornar vazio pois os itens vêm do metta-database.service
       logger.info('Buscando itens customizados da turma', { turmaId });
       
-      // Retornar itens padrão para teste
-      return [
-        {
-          id: 'item-1',
-          nome: 'Álbum Premium',
-          valor: 300.00,
-          configuracaoTurmaId: 'config-123'
-        },
-        {
-          id: 'item-2',
-          nome: 'Fotos Extras',
-          valor: 50.00,
-          configuracaoTurmaId: 'config-123'
-        },
-        {
-          id: 'item-3',
-          nome: 'Box Personalizado',
-          valor: 100.00,
-          configuracaoTurmaId: 'config-123'
-        }
-      ];
+      return [];
     } catch (error: any) {
       logger.error('Erro ao buscar itens customizados', {
         turmaId,
@@ -397,6 +390,33 @@ export class MettaApiService {
         error: error.message,
       });
       return null;
+    }
+  }
+
+  /**
+   * Busca cobranças de um aluno por ID
+   */
+  async getCobrancasByAlunoId(alunoId: number): Promise<any[]> {
+    try {
+      await this.authenticate();
+
+      const response = await this.axiosInstance.get(`/api/cobrancas?alunoId=${alunoId}`);
+
+      if (response.data) {
+        logger.info('Cobranças encontradas para aluno', {
+          alunoId,
+          quantidade: response.data.length,
+        });
+        return response.data;
+      }
+
+      return [];
+    } catch (error: any) {
+      logger.error('Erro ao buscar cobranças do aluno', {
+        alunoId,
+        error: error.message,
+      });
+      return [];
     }
   }
 }

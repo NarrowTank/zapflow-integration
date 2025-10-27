@@ -1086,12 +1086,13 @@ export class ConversationService {
       };
     }
 
-    // Buscar itens customizados (usar a mesma fonte do passo anterior para consistência)
+    // Buscar itens customizados do banco de dados
     const turmaId = clienteData.turmaId;
-    let itensCustomizados = await this.mettaApiService.getItensCustomizados(turmaId);
-    if (!itensCustomizados || itensCustomizados.length === 0) {
-      // Fallback para base local se API não retornar
-      itensCustomizados = await this.mettaDatabaseService.getItensCustomizados(pacoteData.configuracaoTurmaId);
+    const configuracao = await this.mettaDatabaseService.getConfiguracaoTurma(turmaId);
+    let itensCustomizados: any[] = [];
+    
+    if (configuracao) {
+      itensCustomizados = await this.mettaDatabaseService.getItensCustomizados(configuracao.id);
     }
     
     if (!itensCustomizados || itensCustomizados.length === 0) {
@@ -1592,14 +1593,57 @@ export class ConversationService {
       };
     }
 
-    // Placeholder de resumo. Integração detalhada pode consultar cobranças do aluno no Metta.
-    const resumo = 'Resumo financeiro:\n- Boletos/PIX pendentes: 0\n- Carnês pendentes: 0';
+    // Buscar cobranças do aluno
+    try {
+      const cobrancas = await this.mettaApiService.getCobrancasByAlunoId(aluno.id);
+      
+      // Filtrar cobranças pendentes
+      const boletosPixPendentes = cobrancas.filter((c: any) => 
+        (c.tipo === 'BOLETO' || c.tipo === 'PIX') && c.status !== 'PAGO'
+      );
+      const carnesPendentes = cobrancas.filter((c: any) => 
+        c.tipo === 'CARNE' && c.status !== 'PAGO'
+      );
 
-    return {
-      step: 'main_menu',
-      message: `Aluno: ${aluno.nomeCompleto} (Turma ${aluno.turmaId})\n\n${resumo}`,
-      optionList: this.getMainMenuOptions(),
-    };
+      let resumo = '💰 **Resumo Financeiro:**\n\n';
+      
+      if (boletosPixPendentes.length > 0) {
+        resumo += `📄 **Boletos/PIX Pendentes:** ${boletosPixPendentes.length}\n`;
+        boletosPixPendentes.slice(0, 3).forEach((c: any) => {
+          resumo += `   • R$ ${c.valor.toFixed(2)} - Venc: ${new Date(c.vencimento).toLocaleDateString('pt-BR')}\n`;
+        });
+        resumo += '\n';
+      }
+      
+      if (carnesPendentes.length > 0) {
+        resumo += `📋 **Carnês Pendentes:** ${carnesPendentes.length}\n`;
+        carnesPendentes.slice(0, 3).forEach((c: any) => {
+          resumo += `   • R$ ${c.valor.toFixed(2)} - Venc: ${new Date(c.vencimento).toLocaleDateString('pt-BR')}\n`;
+        });
+        resumo += '\n';
+      }
+      
+      if (boletosPixPendentes.length === 0 && carnesPendentes.length === 0) {
+        resumo += '✅ Nenhuma cobrança pendente no momento.';
+      }
+
+      return {
+        step: 'main_menu',
+        message: `👤 **Aluno:** ${aluno.nomeCompleto}\n🎓 **Turma:** ${aluno.turmaId}\n\n${resumo}`,
+        optionList: this.getMainMenuOptions(),
+      };
+    } catch (error: any) {
+      logger.error('Erro ao buscar cobranças do aluno', {
+        alunoId: aluno.id,
+        error: error.message
+      });
+      
+      return {
+        step: 'main_menu',
+        message: `👤 **Aluno:** ${aluno.nomeCompleto}\n🎓 **Turma:** ${aluno.turmaId}\n\n❌ Erro ao buscar cobranças. Por favor, tente novamente.`,
+        optionList: this.getMainMenuOptions(),
+      };
+    }
   }
 
   /**
