@@ -126,28 +126,27 @@ export class ConversationService {
       // Buscar ou criar sessão
       const session = await this.getOrCreateSession(phone);
 
-      // Se está em menu principal e recebeu qualquer mensagem, manter no menu
-      // Se NÃO está em menu e recebeu nova mensagem, resetar para menu inicial
-      if (session.currentStep !== 'main_menu' && session.currentStep !== 'welcome') {
-        const shouldReset = this.shouldResetSession(session.currentStep);
-        if (shouldReset) {
-          logger.info('Sessão fora do menu, resetando para menu inicial', { 
-            phone, 
-            currentStep: session.currentStep 
-          });
-          
-          // Resetar sessão para menu inicial
-          await this.resetSessionToMainMenu(phone);
-          
-          // Enviar mensagem de boas-vindas
-          const welcomeResponse = this.getWelcomeStep();
-          await this.sendResponse(phone, welcomeResponse);
-          
-          // Reiniciar timeout
-          this.startSessionTimeout(phone);
-          
-          return; // Não processar mais essa mensagem
-        }
+      // Verificar se a sessão está em estado final e precisa resetar
+      // Estados finais: quando o usuário já completou um fluxo e voltou ao menu
+      const stepsQuePrecisamReset = ['main_menu'];
+      
+      if (stepsQuePrecisamReset.includes(session.currentStep)) {
+        logger.info('Sessão em estado final, resetando para início', { 
+          phone, 
+          currentStep: session.currentStep 
+        });
+        
+        // Resetar sessão para welcome
+        await this.resetSessionToMainMenu(phone);
+        
+        // Enviar mensagem de boas-vindas
+        const welcomeResponse = this.getWelcomeStep();
+        await this.sendResponse(phone, welcomeResponse);
+        
+        // Cancelar timeout (novo fluxo começando)
+        this.cancelSessionTimeout(phone);
+        
+        return; // Não processar mais essa mensagem
       }
 
       // Determinar resposta baseada no estado atual
@@ -240,8 +239,8 @@ export class ConversationService {
       // Cancela timeout
       this.cancelSessionTimeout(phone);
       
-      // Atualizar sessão para menu inicial sem dados
-      await this.updateSession(phone, 'main_menu', '', {});
+      // Atualizar sessão para welcome (início) sem dados
+      await this.updateSession(phone, 'welcome', '', {});
       
       logger.info('Sessão resetada com sucesso', { phone });
     } catch (error: any) {
@@ -254,10 +253,10 @@ export class ConversationService {
    */
   private async sendFinalizationMessage(phone: string): Promise<void> {
     try {
-      const message = `✅ *Atendimento finalizado*\n\n${'🙏'.repeat(3)} Agradecemos pelo seu contato!\n\n${'📸'.repeat(3)} Seu pedido foi registrado com sucesso em nossos sistemas.\n\n💬 Caso precise de mais alguma coisa, é só enviar uma mensagem que retornaremos ao menu inicial.\n\n_*Este atendimento foi encerrado automaticamente após 4 minutos de inatividade.*_`;
+      const message = `✅ Atendimento finalizado\n\nAgradecemos pelo seu contato!\n\n💬 Caso precise de mais alguma coisa, é só enviar uma mensagem que retornaremos ao menu inicial.\n\nEste atendimento foi encerrado automaticamente após 4 minutos de inatividade.`;
       
       await this.sendResponse(phone, {
-        step: 'main_menu',
+        step: 'welcome',
         message,
         optionList: null
       });
