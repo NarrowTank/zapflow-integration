@@ -1973,8 +1973,12 @@ export class ConversationService {
         throw new Error(carneResponse.message || 'Erro ao gerar carnê');
       }
 
-      // Pegar dados da primeira parcela
-      const primeiraParcela = carneResponse.data.parcelas[0];
+      // Pegar dados da primeira parcela (resposta vem em data.data)
+      const parcelas = carneResponse.data.data || carneResponse.data.parcelas || [];
+      if (parcelas.length === 0) {
+        throw new Error('Nenhuma parcela foi gerada');
+      }
+      const primeiraParcela = parcelas[0];
 
       // Montar mensagem com os dados reais
       const mensagem = `💳 **PAGAMENTO PARCELADO (Carnê ${parcelas}x)**\n\n` +
