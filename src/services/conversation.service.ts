@@ -333,27 +333,27 @@ export class ConversationService {
 
       case 'contract_name':
         logger.info('Retornando handleName');
-        return await this.handleName(messageLower, session.phone);
+        return await this.handleName(message, session.phone);
 
       case 'contract_email':
         logger.info('Retornando handleEmail');
-        return await this.handleEmail(messageLower, session.phone);
+        return await this.handleEmail(message, session.phone);
 
       case 'contract_cep':
         logger.info('Retornando handleCep');
-        return await this.handleCep(messageLower, session.phone);
+        return await this.handleCep(message, session.phone);
 
       case 'contract_address':
         logger.info('Retornando handleAddress');
-        return await this.handleAddress(messageLower, session.phone);
+        return await this.handleAddress(message, session.phone);
 
       case 'contract_neighborhood':
         logger.info('Retornando handleNeighborhood');
-        return await this.handleNeighborhood(messageLower, session.phone);
+        return await this.handleNeighborhood(message, session.phone);
 
       case 'contract_city':
         logger.info('Retornando handleCity');
-        return await this.handleCity(messageLower, session.phone);
+        return await this.handleCity(message, session.phone);
 
       case 'contract_state':
         logger.info('Retornando handleState');
