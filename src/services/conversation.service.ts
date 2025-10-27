@@ -1650,7 +1650,7 @@ export class ConversationService {
             mensagem += `📦 Itens: ${boleto.descricao}\n`;
           }
           
-          mensagem += `💵 Valor: R$ ${boleto.valor.toFixed(2)}\n`;
+          mensagem += `💵 Valor: R$ ${(parseFloat(boleto.valor) || 0).toFixed(2)}\n`;
           mensagem += `📅 Vencimento: ${new Date(boleto.vencimento).toLocaleDateString('pt-BR')}\n`;
           
           // Mostrar link e código apenas se estiver pendente
@@ -1687,7 +1687,7 @@ export class ConversationService {
         Object.keys(carnesAgrupados).forEach((grupoKey, grupoIndex) => {
           const parcelasCarne = carnesAgrupados[grupoKey];
           const totalParcelas = parcelasCarne.length;
-          const valorTotal = parcelasCarne.reduce((sum: number, p: any) => sum + p.valor, 0);
+          const valorTotal = parcelasCarne.reduce((sum: number, p: any) => sum + (parseFloat(p.valor) || 0), 0);
           const numeroGrupo = grupoIndex + 1;
           
           mensagem += `📋 **CARNÊ #${numeroGrupo} (${totalParcelas}x)**\n`;
@@ -1709,7 +1709,7 @@ export class ConversationService {
             
             mensagem += `  ${emoji} **${numeroParcela}ª Parcela:** ${statusEmoji} ${statusTexto}\n`;
             mensagem += `  📅 Vencimento: ${new Date(parcela.vencimento).toLocaleDateString('pt-BR')}\n`;
-            mensagem += `  💵 Valor: R$ ${parcela.valor.toFixed(2)}\n`;
+            mensagem += `  💵 Valor: R$ ${(parseFloat(parcela.valor) || 0).toFixed(2)}\n`;
             
             // Mostrar link e código apenas se estiver pendente
             if (parcela.status !== 'PAGO') {
