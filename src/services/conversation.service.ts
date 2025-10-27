@@ -1140,12 +1140,27 @@ export class ConversationService {
     });
 
     mensagem += `💰 **VALOR TOTAL: R$ ${valorTotal.toFixed(2)}**\n\n`;
-    mensagem += 'Confirma este pacote?\n\n';
-    mensagem += '👉 Digite **SIM** para confirmar ou **NÃO** para alterar.';
+    mensagem += '✅ Confirma este pacote?';
 
     return {
       step: 'package_confirmation',
       message: mensagem,
+      optionList: {
+        title: 'Confirmar Pacote',
+        buttonLabel: 'Confirmar',
+        options: [
+          {
+            id: 'sim',
+            title: 'Sim, confirmar',
+            description: 'Prosseguir com este pacote'
+          },
+          {
+            id: 'nao',
+            title: 'Não, alterar',
+            description: 'Refazer as escolhas'
+          }
+        ]
+      }
     };
   }
 
@@ -1700,13 +1715,13 @@ export class ConversationService {
   private async showCarneParcelasOptions(phone: string, configuracao: any): Promise<ConversationStep> {
     const carneMaxParcelas = configuracao.carneMaxParcelas || 1;
     
-    // Criar opções de parcelamento (2 até o máximo)
+    // Criar opções de parcelamento (1x até o máximo)
     const parcelasOptions = [];
-    for (let i = 2; i <= carneMaxParcelas; i++) {
+    for (let i = 1; i <= carneMaxParcelas; i++) {
       parcelasOptions.push({
         id: i.toString(),
         title: `${i}x`,
-        description: `Parcelamento em ${i} vezes`
+        description: i === 1 ? 'À vista' : `Parcelamento em ${i} vezes`
       });
     }
 
@@ -1739,20 +1754,29 @@ export class ConversationService {
 
     const parcelas = parseInt(message);
     
-    if (isNaN(parcelas) || parcelas < 2) {
+    if (isNaN(parcelas) || parcelas < 1) {
+      // Buscar configuração para mostrar opções corretas
+      const session = await this.getOrCreateSession(phone);
+      const clienteData = session.data?.clienteData;
+      const configuracao = clienteData ? await this.mettaDatabaseService.getConfiguracaoTurma(clienteData.turmaId) : null;
+      const carneMaxParcelas = configuracao?.carneMaxParcelas || 6;
+      
+      const parcelasOptions = [];
+      for (let i = 1; i <= carneMaxParcelas; i++) {
+        parcelasOptions.push({
+          id: i.toString(),
+          title: `${i}x`,
+          description: i === 1 ? 'À vista' : `Parcelamento em ${i} vezes`
+        });
+      }
+      
       return {
         step: 'carne_parcelas',
         message: '❌ Número de parcelas inválido. Por favor, escolha uma opção válida.',
         optionList: {
           title: 'Quantidade de Parcelas',
           buttonLabel: 'Escolher parcelas',
-          options: [
-            { id: '2', title: '2x', description: 'Parcelamento em 2 vezes' },
-            { id: '3', title: '3x', description: 'Parcelamento em 3 vezes' },
-            { id: '4', title: '4x', description: 'Parcelamento em 4 vezes' },
-            { id: '5', title: '5x', description: 'Parcelamento em 5 vezes' },
-            { id: '6', title: '6x', description: 'Parcelamento em 6 vezes' }
-          ]
+          options: parcelasOptions
         }
       };
     }
