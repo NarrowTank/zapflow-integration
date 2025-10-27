@@ -1992,20 +1992,26 @@ export class ConversationService {
       if (!Array.isArray(parcelasArray) || parcelasArray.length === 0) {
         throw new Error('Nenhuma parcela foi gerada');
       }
-      const primeiraParcela = parcelasArray[0];
 
-      // Montar mensagem com os dados reais
-      const mensagem = `💳 **PAGAMENTO PARCELADO (Carnê ${parcelas}x)**\n\n` +
+      // Montar mensagem com TODAS as parcelas
+      let mensagem = `💳 **PAGAMENTO PARCELADO (Carnê ${parcelas}x)**\n\n` +
         `💰 Valor Total: R$ ${valorTotal.toFixed(2)}\n` +
-        `📅 Valor da Parcela: R$ ${valorParcela.toFixed(2)}\n\n` +
-        `📋 **1ª Parcela:**\n` +
-        `📅 Vencimento: ${new Date(primeiraParcela.vencimento).toLocaleDateString('pt-BR')}\n` +
-        `💵 Valor: R$ ${primeiraParcela.valor.toFixed(2)}\n\n` +
-        `**📄 BOLETO**\n` +
-        `🔗 Link: ${primeiraParcela.link}\n` +
-        `📱 Código de Barras:\n${primeiraParcela.barcode}\n\n` +
-        `✅ Seu pedido foi registrado com sucesso!\n` +
-        `📬 As demais parcelas serão enviadas nos próximos meses.\n\n` +
+        `📅 Valor da Parcela: R$ ${valorParcela.toFixed(2)}\n\n`;
+
+      // Adicionar informações de cada parcela
+      parcelasArray.forEach((parcela: any, index: number) => {
+        const numero = index + 1;
+        const emoji = numero === 1 ? '📋' : '📄';
+        
+        mensagem += `${emoji} **${numero}ª Parcela:**\n` +
+          `📅 Vencimento: ${new Date(parcela.vencimento).toLocaleDateString('pt-BR')}\n` +
+          `💵 Valor: R$ ${parcela.valor.toFixed(2)}\n` +
+          `🔗 Link: ${parcela.link}\n` +
+          `📱 Código de Barras:\n${parcela.barcode}\n\n`;
+      });
+
+      mensagem += `✅ Seu pedido foi registrado com sucesso!\n` +
+        `💾 Todos os boletos foram gerados e estão disponíveis acima.\n\n` +
         `Retornando ao menu principal.`;
 
       return {
