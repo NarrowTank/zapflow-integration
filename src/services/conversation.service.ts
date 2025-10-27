@@ -1655,11 +1655,14 @@ export class ConversationService {
           
           // Mostrar link e código apenas se estiver pendente
           if (boleto.status !== 'PAGO') {
-            if (boleto.link) {
-              mensagem += `🔗 Link: ${boleto.link}\n`;
+            const link = boleto.dadosEfi?.link || boleto.link;
+            const barcode = boleto.dadosEfi?.barcode || boleto.barcode;
+            
+            if (link) {
+              mensagem += `🔗 Link: ${link}\n`;
             }
-            if (boleto.barcode) {
-              mensagem += `📱 Código: ${boleto.barcode}\n`;
+            if (barcode) {
+              mensagem += `📱 Código: ${barcode}\n`;
             }
           }
           
@@ -1669,12 +1672,13 @@ export class ConversationService {
 
       // Processar Carnês
       if (carnes.length > 0) {
-        // Agrupar carnês por grupo (assumindo que carnês do mesmo pedido têm o mesmo timestamp/id base)
+        // Agrupar carnês por carnetId (ID do carnê na Efí)
         const carnesAgrupados: { [key: string]: any[] } = {};
         
         carnes.forEach((carne: any) => {
-          // Usar descrição ou data de criação como chave de agrupamento
-          const grupoKey = carne.descricao || carne.createdAt || 'grupo1';
+          // Usar carnetId da Efí ou descrição como chave de agrupamento
+          const carnetId = carne.dadosEfi?.carnetId || carne.carnetId;
+          const grupoKey = carnetId ? `carne_${carnetId}` : (carne.descricao || carne.createdAt || 'grupo1');
           
           if (!carnesAgrupados[grupoKey]) {
             carnesAgrupados[grupoKey] = [];
@@ -1713,11 +1717,14 @@ export class ConversationService {
             
             // Mostrar link e código apenas se estiver pendente
             if (parcela.status !== 'PAGO') {
-              if (parcela.link) {
-                mensagem += `  🔗 Link: ${parcela.link}\n`;
+              const link = parcela.dadosEfi?.link || parcela.link;
+              const barcode = parcela.dadosEfi?.barcode || parcela.barcode;
+              
+              if (link) {
+                mensagem += `  🔗 Link: ${link}\n`;
               }
-              if (parcela.barcode) {
-                mensagem += `  📱 Código: ${parcela.barcode}\n`;
+              if (barcode) {
+                mensagem += `  📱 Código: ${barcode}\n`;
               }
             }
             
