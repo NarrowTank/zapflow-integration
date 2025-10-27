@@ -1973,9 +1973,23 @@ export class ConversationService {
         throw new Error(carneResponse.message || 'Erro ao gerar carnê');
       }
 
+      // Log da estrutura da resposta para debug
+      logger.info('Estrutura da resposta do carnê', {
+        hasData: !!carneResponse.data,
+        dataKeys: carneResponse.data ? Object.keys(carneResponse.data) : [],
+        hasDataData: !!(carneResponse.data && carneResponse.data.data),
+        dataDataLength: carneResponse.data?.data?.length || 0
+      });
+
       // Pegar dados da primeira parcela (resposta vem em data.data)
-      const parcelasArray = carneResponse.data.data || carneResponse.data.parcelas || [];
-      if (parcelasArray.length === 0) {
+      const parcelasArray = (carneResponse.data && carneResponse.data.data) || carneResponse.data?.parcelas || carneResponse.data || [];
+      
+      logger.info('Parcelas extraídas', {
+        parcelasArrayLength: parcelasArray.length,
+        primeiraParcela: parcelasArray[0] ? Object.keys(parcelasArray[0]) : []
+      });
+      
+      if (!Array.isArray(parcelasArray) || parcelasArray.length === 0) {
         throw new Error('Nenhuma parcela foi gerada');
       }
       const primeiraParcela = parcelasArray[0];
