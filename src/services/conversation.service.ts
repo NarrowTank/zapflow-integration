@@ -26,6 +26,10 @@ export class ConversationService {
   private mettaDatabaseService: MettaDatabaseService;
   private mettaApiService: MettaApiService;
   private paymentIntegrationService: PaymentIntegrationService;
+  
+  // Gerenciamento de timeouts para finalizar sessões
+  private sessionTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private readonly SESSION_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutos
 
   constructor(redisService?: RedisService) {
     try {
@@ -122,16 +126,51 @@ export class ConversationService {
       // Buscar ou criar sessão
       const session = await this.getOrCreateSession(phone);
 
+      // Se está em menu principal e recebeu qualquer mensagem, manter no menu
+      // Se NÃO está em menu e recebeu nova mensagem, resetar para menu inicial
+      if (session.currentStep !== 'main_menu' && session.currentStep !== 'welcome') {
+        const shouldReset = this.shouldResetSession(session.currentStep);
+        if (shouldReset) {
+          logger.info('Sessão fora do menu, resetando para menu inicial', { 
+            phone, 
+            currentStep: session.currentStep 
+          });
+          
+          // Resetar sessão para menu inicial
+          await this.resetSessionToMainMenu(phone);
+          
+          // Enviar mensagem de boas-vindas
+          const welcomeResponse = this.getWelcomeStep();
+          await this.sendResponse(phone, welcomeResponse);
+          
+          // Reiniciar timeout
+          this.startSessionTimeout(phone);
+          
+          return; // Não processar mais essa mensagem
+        }
+      }
+
       // Determinar resposta baseada no estado atual
       const response = await this.determineResponse(session, messageContent);
 
       if (response) {
+        // Cancela timeout anterior
+        this.cancelSessionTimeout(phone);
+        
         // Atualizar sessão ANTES de enviar a resposta (preservando dados existentes)
         const currentSession = await this.getOrCreateSession(phone);
         await this.updateSession(phone, response.step, messageContent, currentSession.data);
         
         // Enviar resposta
         await this.sendResponse(phone, response);
+        
+        // Se voltou para menu principal (fim da conversa), iniciar timeout de 4 minutos
+        if (response.step === 'main_menu') {
+          this.startSessionTimeout(phone);
+        }
+      } else {
+        // Se não há resposta, manter timeout rodando
+        this.startSessionTimeout(phone);
       }
 
     } catch (error: any) {
@@ -139,6 +178,91 @@ export class ConversationService {
         phone: payload.phone,
         error: error.message,
       });
+    }
+  }
+
+  /**
+   * Cancela timeout de uma sessão
+   */
+  private cancelSessionTimeout(phone: string): void {
+    const existingTimeout = this.sessionTimeouts.get(phone);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      this.sessionTimeouts.delete(phone);
+      logger.info('Timeout cancelado para sessão', { phone });
+    }
+  }
+
+  /**
+   * Inicia timeout de 4 minutos para finalizar sessão
+   */
+  private startSessionTimeout(phone: string): void {
+    // Cancela timeout anterior se existir
+    this.cancelSessionTimeout(phone);
+
+    const timeout = setTimeout(async () => {
+      try {
+        logger.info('Timeout de 4 minutos atingido, finalizando sessão', { phone });
+        
+        // Enviar mensagem de agradecimento
+        await this.sendFinalizationMessage(phone);
+        
+        // Resetar sessão
+        await this.resetSessionToMainMenu(phone);
+        
+      } catch (error: any) {
+        logger.error('Erro ao finalizar sessão por timeout', { phone, error: error.message });
+      } finally {
+        this.sessionTimeouts.delete(phone);
+      }
+    }, this.SESSION_TIMEOUT_MS);
+
+    this.sessionTimeouts.set(phone, timeout);
+    logger.info('Timeout iniciado para sessão', { phone, timeoutMs: this.SESSION_TIMEOUT_MS });
+  }
+
+  /**
+   * Verifica se sessão deve ser resetada (menu inicial ou fora de contexto)
+   */
+  private shouldResetSession(currentStep: string): boolean {
+    // Steps que indicam fim de conversa (após geração de pagamento)
+    const finalSteps = ['main_menu'];
+    return !finalSteps.includes(currentStep);
+  }
+
+  /**
+   * Reseta sessão para menu inicial
+   */
+  private async resetSessionToMainMenu(phone: string): Promise<void> {
+    try {
+      logger.info('Resetando sessão para menu inicial', { phone });
+      
+      // Cancela timeout
+      this.cancelSessionTimeout(phone);
+      
+      // Atualizar sessão para menu inicial sem dados
+      await this.updateSession(phone, 'main_menu', '', {});
+      
+      logger.info('Sessão resetada com sucesso', { phone });
+    } catch (error: any) {
+      logger.error('Erro ao resetar sessão', { phone, error: error.message });
+    }
+  }
+
+  /**
+   * Envia mensagem de finalização de atendimento
+   */
+  private async sendFinalizationMessage(phone: string): Promise<void> {
+    try {
+      const message = `✅ *Atendimento finalizado*\n\n${'🙏'.repeat(3)} Agradecemos pelo seu contato!\n\n${'📸'.repeat(3)} Seu pedido foi registrado com sucesso em nossos sistemas.\n\n💬 Caso precise de mais alguma coisa, é só enviar uma mensagem que retornaremos ao menu inicial.\n\n_*Este atendimento foi encerrado automaticamente após 4 minutos de inatividade.*_`;
+      
+      await this.sendResponse(phone, {
+        step: 'main_menu',
+        message,
+        optionList: null
+      });
+    } catch (error: any) {
+      logger.error('Erro ao enviar mensagem de finalização', { phone, error: error.message });
     }
   }
 
@@ -2599,8 +2723,14 @@ export class ConversationService {
    * Fecha conexões
    */
   async disconnect(): Promise<void> {
+    // Limpar todos os timeouts ativos
+    this.sessionTimeouts.forEach((timeout) => {
+      clearTimeout(timeout);
+    });
+    this.sessionTimeouts.clear();
+    
     if (this.prisma) {
-    await this.prisma.$disconnect();
+      await this.prisma.$disconnect();
     }
   }
 }
