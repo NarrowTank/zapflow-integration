@@ -1051,7 +1051,7 @@ export class ConversationService {
 
     // Construir mensagem com lista numerada de itens
     let mensagem = '🎉 Cliente cadastrado com sucesso!\n\nAgora vamos escolher seu pacote personalizado.\n\n';
-    mensagem += '📦 **Itens Configurados:**\n\n';
+    mensagem += '📦 **Itens Disponíveis:**\n\n';
     
     itensCustomizados.forEach((item, index) => {
       const numero = index + 1;
@@ -1135,29 +1135,17 @@ export class ConversationService {
     mensagem += '📦 **Itens selecionados:**\n\n';
     
     itensSelecionados.forEach((item, index) => {
-      const numero = numeros[index];
       const valor = item.valor ? `R$ ${item.valor.toFixed(2)}` : 'Consultar';
-      mensagem += `${numero}. ${item.nome} - ${valor}\n\n`;
+      mensagem += `${index + 1}. ${item.nome} - ${valor}\n\n`;
     });
 
     mensagem += `💰 **VALOR TOTAL: R$ ${valorTotal.toFixed(2)}**\n\n`;
-    mensagem += 'Confirma este pacote?';
+    mensagem += 'Confirma este pacote?\n\n';
+    mensagem += '👉 Digite **SIM** para confirmar ou **NÃO** para alterar.';
 
     return {
       step: 'package_confirmation',
       message: mensagem,
-      buttonList: {
-      buttons: [
-          {
-            id: 'confirmo',
-            label: 'Confirmo'
-          },
-          {
-            id: 'editar',
-            label: 'Editar escolha'
-          }
-        ]
-      }
     };
   }
 
