@@ -1622,39 +1622,113 @@ export class ConversationService {
     try {
       const cobrancas = await this.mettaApiService.getCobrancasByAlunoId(aluno.id);
       
-      // Filtrar cobranças pendentes
-      const boletosPixPendentes = cobrancas.filter((c: any) => 
-        (c.tipo === 'BOLETO' || c.tipo === 'PIX') && c.status !== 'PAGO'
-      );
-      const carnesPendentes = cobrancas.filter((c: any) => 
-        c.tipo === 'CARNE' && c.status !== 'PAGO'
-      );
+      if (!Array.isArray(cobrancas) || cobrancas.length === 0) {
+        return {
+          step: 'main_menu',
+          message: `👤 **Aluno:** ${aluno.nomeCompleto}\n🎓 **Turma:** ${aluno.turmaId}\n\n✅ Nenhuma cobrança encontrada.`,
+          optionList: this.getMainMenuOptions(),
+        };
+      }
 
-      let resumo = '💰 **Resumo Financeiro:**\n\n';
-      
-      if (boletosPixPendentes.length > 0) {
-        resumo += `📄 **Boletos/PIX Pendentes:** ${boletosPixPendentes.length}\n`;
-        boletosPixPendentes.slice(0, 3).forEach((c: any) => {
-          resumo += `   • R$ ${c.valor.toFixed(2)} - Venc: ${new Date(c.vencimento).toLocaleDateString('pt-BR')}\n`;
+      let mensagem = `👤 **Aluno:** ${aluno.nomeCompleto}\n🎓 **Turma:** ${aluno.turmaId}\n\n💰 **SUAS COBRANÇAS:**\n\n`;
+
+      // Agrupar cobranças por tipo (BOLETO/PIX ou CARNE)
+      const boletosPix = cobrancas.filter((c: any) => c.tipo === 'BOLETO' || c.tipo === 'PIX');
+      const carnes = cobrancas.filter((c: any) => c.tipo === 'CARNE');
+
+      // Processar Boletos/PIX
+      if (boletosPix.length > 0) {
+        boletosPix.forEach((boleto: any, index: number) => {
+          const numero = index + 1;
+          const statusEmoji = boleto.status === 'PAGO' ? '✅' : '⚠️';
+          const statusTexto = boleto.status === 'PAGO' ? 'PAGO' : 'PENDENTE';
+          
+          mensagem += `📄 **BOLETO/PIX #${numero}** ${statusEmoji} ${statusTexto}\n`;
+          
+          // Itens do pacote (se disponível)
+          if (boleto.descricao) {
+            mensagem += `📦 Itens: ${boleto.descricao}\n`;
+          }
+          
+          mensagem += `💵 Valor: R$ ${boleto.valor.toFixed(2)}\n`;
+          mensagem += `📅 Vencimento: ${new Date(boleto.vencimento).toLocaleDateString('pt-BR')}\n`;
+          
+          // Mostrar link e código apenas se estiver pendente
+          if (boleto.status !== 'PAGO') {
+            if (boleto.link) {
+              mensagem += `🔗 Link: ${boleto.link}\n`;
+            }
+            if (boleto.barcode) {
+              mensagem += `📱 Código: ${boleto.barcode}\n`;
+            }
+          }
+          
+          mensagem += '\n';
         });
-        resumo += '\n';
       }
-      
-      if (carnesPendentes.length > 0) {
-        resumo += `📋 **Carnês Pendentes:** ${carnesPendentes.length}\n`;
-        carnesPendentes.slice(0, 3).forEach((c: any) => {
-          resumo += `   • R$ ${c.valor.toFixed(2)} - Venc: ${new Date(c.vencimento).toLocaleDateString('pt-BR')}\n`;
+
+      // Processar Carnês
+      if (carnes.length > 0) {
+        // Agrupar carnês por grupo (assumindo que carnês do mesmo pedido têm o mesmo timestamp/id base)
+        const carnesAgrupados: { [key: string]: any[] } = {};
+        
+        carnes.forEach((carne: any) => {
+          // Usar descrição ou data de criação como chave de agrupamento
+          const grupoKey = carne.descricao || carne.createdAt || 'grupo1';
+          
+          if (!carnesAgrupados[grupoKey]) {
+            carnesAgrupados[grupoKey] = [];
+          }
+          
+          carnesAgrupados[grupoKey].push(carne);
         });
-        resumo += '\n';
-      }
-      
-      if (boletosPixPendentes.length === 0 && carnesPendentes.length === 0) {
-        resumo += '✅ Nenhuma cobrança pendente no momento.';
+
+        // Processar cada grupo de carnê
+        Object.keys(carnesAgrupados).forEach((grupoKey, grupoIndex) => {
+          const parcelasCarne = carnesAgrupados[grupoKey];
+          const totalParcelas = parcelasCarne.length;
+          const valorTotal = parcelasCarne.reduce((sum: number, p: any) => sum + p.valor, 0);
+          const numeroGrupo = grupoIndex + 1;
+          
+          mensagem += `📋 **CARNÊ #${numeroGrupo} (${totalParcelas}x)**\n`;
+          
+          // Itens do pacote
+          if (parcelasCarne[0].descricao) {
+            mensagem += `📦 Itens: ${parcelasCarne[0].descricao}\n`;
+          }
+          
+          mensagem += `💰 Valor Total: R$ ${valorTotal.toFixed(2)}\n`;
+          mensagem += `📅 Parcela: R$ ${(valorTotal / totalParcelas).toFixed(2)}\n\n`;
+
+          // Listar todas as parcelas
+          parcelasCarne.forEach((parcela: any, indexParcela: number) => {
+            const numeroParcela = indexParcela + 1;
+            const statusEmoji = parcela.status === 'PAGO' ? '✅' : '⚠️';
+            const statusTexto = parcela.status === 'PAGO' ? 'PAGO' : 'PENDENTE';
+            const emoji = numeroParcela === 1 ? '📋' : '📄';
+            
+            mensagem += `  ${emoji} **${numeroParcela}ª Parcela:** ${statusEmoji} ${statusTexto}\n`;
+            mensagem += `  📅 Vencimento: ${new Date(parcela.vencimento).toLocaleDateString('pt-BR')}\n`;
+            mensagem += `  💵 Valor: R$ ${parcela.valor.toFixed(2)}\n`;
+            
+            // Mostrar link e código apenas se estiver pendente
+            if (parcela.status !== 'PAGO') {
+              if (parcela.link) {
+                mensagem += `  🔗 Link: ${parcela.link}\n`;
+              }
+              if (parcela.barcode) {
+                mensagem += `  📱 Código: ${parcela.barcode}\n`;
+              }
+            }
+            
+            mensagem += '\n';
+          });
+        });
       }
 
       return {
         step: 'main_menu',
-        message: `👤 **Aluno:** ${aluno.nomeCompleto}\n🎓 **Turma:** ${aluno.turmaId}\n\n${resumo}`,
+        message: mensagem.trim(),
         optionList: this.getMainMenuOptions(),
       };
     } catch (error: any) {

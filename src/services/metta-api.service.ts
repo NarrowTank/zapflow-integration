@@ -402,12 +402,34 @@ export class MettaApiService {
 
       const response = await this.axiosInstance.get(`/api/cobrancas?alunoId=${alunoId}`);
 
+      // Verificar se a resposta é um array ou um objeto com array dentro
+      let cobrancas: any[] = [];
+      
       if (response.data) {
+        // Se for array direto
+        if (Array.isArray(response.data)) {
+          cobrancas = response.data;
+        }
+        // Se for objeto com propriedade data
+        else if (response.data.data && Array.isArray(response.data.data)) {
+          cobrancas = response.data.data;
+        }
+        // Se for objeto com propriedade cobrancas
+        else if (response.data.cobrancas && Array.isArray(response.data.cobrancas)) {
+          cobrancas = response.data.cobrancas;
+        }
+        // Tentar converter objeto único em array
+        else if (typeof response.data === 'object') {
+          cobrancas = [response.data];
+        }
+
         logger.info('Cobranças encontradas para aluno', {
           alunoId,
-          quantidade: response.data.length,
+          quantidade: cobrancas.length,
+          estrutura: Array.isArray(response.data) ? 'array' : 'objeto'
         });
-        return response.data;
+        
+        return cobrancas;
       }
 
       return [];
